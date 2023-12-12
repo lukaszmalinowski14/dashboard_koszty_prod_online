@@ -4,6 +4,7 @@ import plotly.express as px
 import pandas as pd
 import sys
 sys.path.append('/home/adminuser/venv/lib/python3.9/site-packages')
+sys.path.append('/home/adminuser/venv/lib/python3.9/site-packages/st_aggrid')
 # import os
 # import warnings
 # import openpyxl as pl
