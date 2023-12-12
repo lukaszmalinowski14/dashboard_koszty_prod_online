@@ -1,11 +1,13 @@
+from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode
 import streamlit as st
 import plotly.express as px
 import pandas as pd
+import sys
+sys.path.append('/home/adminuser/venv/lib/python3.9/site-packages')
 # import os
 # import warnings
 # import openpyxl as pl
 # , DataReturnMode, ColumnsAutoSizeMode
-from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode
 
 # warnings.filterwarnings('ignore')
 
