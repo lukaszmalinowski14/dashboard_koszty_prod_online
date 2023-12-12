@@ -3,8 +3,8 @@ from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode
 import streamlit as st
 import pandas as pd
 import sys
-sys.path.append('/home/adminuser/venv/lib/python3.9/site-packages')
-sys.path.append('/home/adminuser/venv/lib/python3.9/site-packages/st_aggrid')
+sys.path.append('/home/adminuser/venv/lib/site-packages')
+sys.path.append('/home/adminuser/venv/lib/site-packages/st_aggrid')
 # import os
 # import warnings
 # import openpyxl as pl
