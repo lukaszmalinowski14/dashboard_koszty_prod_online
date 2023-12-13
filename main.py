@@ -3,6 +3,9 @@ from st_aggrid import GridOptionsBuilder, AgGrid, GridUpdateMode
 import streamlit as st
 import pandas as pd
 import sys
+from datetime import datetime
+from dateutil import parser
+
 # sys.path.append('/home/adminuser/venv/lib/site-packages')
 # sys.path.append('/home/adminuser/venv/lib/site-packages/st_aggrid')
 # import os
@@ -38,23 +41,55 @@ def load_data():
 
 
 df = load_data()
+# df['data_wystawienia_wz'] = pd.to_datetime(
+#     df['data_wystawienia_wz'], format='%Y-%m-%d')
 
 
 # FILTRY
 st.sidebar.header("Choose your filter: ")
-# Create for Region
+min_date = df["data_wystawienia_wz"].min()
+max_date = df["data_wystawienia_wz"].max()
+
+
+filter_min_date = st.sidebar.date_input("Start", value=min_date)
+filter_max_date = st.sidebar.date_input("End", value=max_date)
+
+
+# Create a list containing the start and end dates
+
+month = filter_min_date.month
+day = filter_min_date.day
+year = filter_min_date.year
+date_min_str = str(day)+'.'+str(month)+'.'+str(year)
+
+# Convert the string to a date
+date_min = datetime.strptime(date_min_str, "%d.%m.%Y")
+month = filter_max_date.month
+day = filter_max_date.day
+year = filter_max_date.year
+date_min_str = str(day)+'.'+str(month)+'.'+str(year)
+date_max = datetime.strptime(date_min_str, "%d.%m.%Y")
+
+# Filter the DataFrame based on the date range
+df_filtered = df.loc[(df["data_wystawienia_wz"] >= date_min)
+                     & (df["data_wystawienia_wz"] <= date_max)]
+
+
+# Create for date
 # towar = st.sidebar.selectbox(
 #     "Pick your towar", df["klucz_towaru_wz"].unique())
 
 
 # df z towarem i wartością sprzedaży w wybranym przedziale czasu
-df_towar = df.groupby('klucz_towaru_wz')['wartosc_pln'].sum().reset_index()
+df_towar = df_filtered.groupby('klucz_towaru_wz')[
+    'wartosc_pln'].sum().reset_index()
 # Sortowanie nowego DataFrame po sumie wartości sprzedaży:
 df_towar = df_towar.sort_values(
     by='wartosc_pln', ascending=False).reset_index(drop=True)
 # Zaokrąglenie sumy wartości sprzedaży do pełnych tysięcy:
 df_towar['wartosc_pln'] = df_towar['wartosc_pln'].apply(
     lambda x: round(x, 0))
+df_towar['suma_wartosc'] = df_towar["wartosc_pln"].sum()
 
 ##########################################
 gd = GridOptionsBuilder.from_dataframe(df_towar)
@@ -76,96 +111,6 @@ sel_row = grid_table["selected_rows"]
 # st.write(type(sel_row))
 towar = sel_row[0]["klucz_towaru_wz"]
 ##########################################
-
-
-# def dataframe_with_selections(df_towar):
-#     df_with_selections = df_towar.copy()
-#     df_with_selections.insert(0, "Select", False)
-
-#     # Get dataframe row-selections from user with st.data_editor
-#     edited_df = st.data_editor(
-#         df_with_selections,
-#         hide_index=True,
-#         column_config={
-#             "Select": st.column_config.CheckboxColumn(required=True)},
-#         disabled=df_towar.columns,
-#     )
-
-#     # Filter the dataframe using the temporary column, then drop the column
-#     selected_rows = edited_df[edited_df.Select].reset_index()
-#     return selected_rows.drop('Select', axis=1)
-
-
-# selection = dataframe_with_selections(df_towar)
-# st.write("Your selection:")
-# st.write(selection)
-# st.write(selection.iloc[-1])
-####################################
-
-
-# # Pobranie indeksu ostatnio zaznaczonego wiersza z sesji
-# last_selected_row_index = st.session_state.get(session_key, 0)
-
-# # Utworzenie edytowalnego DataFrame za pomocą widgetu st.data_editor
-# edited_df = st.data_editor(df_towar)
-# edited_df.insert(0, "Select", False)
-# # Sprawdź, czy coś zostało zaznaczone
-# if not edited_df.empty:
-#     # Pobierz indeksy zaznaczonych wierszy
-#     selected_rows = edited_df.index.tolist()
-
-#     # Sprawdź, czy indeksy zaznaczonych wierszy różnią się od ostatnio zaznaczonego
-#     if selected_rows != [last_selected_row_index]:
-#         # Zaktualizuj ostatnio zaznaczony indeks w sesji
-#         st.session_state[session_key] = selected_rows[-1]
-
-#         # Wyświetl informacje o ostatnim zaznaczonym wierszu
-#         st.markdown(f"Last selected row: {selected_rows[-1]}")
-
-# # Jeśli nic nie jest zaznaczone, wyświetl ostrzeżenie
-# else:
-#     st.warning("Please select a row in the data editor.")
-####################################
-
-# # Ustawienie klucza sesji
-# session_key = "selected_row_index"
-
-# # Pobranie indeksu zaznaczonego wiersza z sesji
-# selected_row_index = st.session_state.get(session_key, 0)
-
-# # Utworzenie edytowalnego DataFrame za pomocą widgetu st.table
-# edited_df = st.data_editor(df_towar, key=session_key)
-
-# # Sprawdź, czy coś zostało zaznaczone
-# if not edited_df.empty:
-#     # Pobierz wartość w kolumnie "command" z zaznaczonego wiersza
-#     # favorite_command = edited_df[selected_row_index]["klucz_towaru_wz"]
-#     st.write(selected_row_index)
-# st.markdown(f"Your favorite command is **{favorite_command}** 🎈")
-# else:
-#     st.warning("Please select a row in the data editor.")
-
-####################################
-# gb = GridOptionsBuilder.from_dataframe(df_towar)
-# gb.configure_selection(selection_mode="single", use_checkbox=True)
-# gb.configure_side_bar()
-# gridOptions = gb.build()
-
-# data = AgGrid(df_towar,
-#               gridOptions=gridOptions,
-#               enable_enterprise_modules=True,
-#               allow_unsafe_jscode=True,
-#               update_mode=GridUpdateMode.SELECTION_CHANGED,
-#               columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
-
-# # selected_rows = data["selected_rows"]
-
-# # if len(selected_rows) != 0:
-# #    selected_rows[0]
-
-
-# st.write("Your selection:")
-# # st.write(selection)
 
 
 #######################################
@@ -218,17 +163,18 @@ with cl2:
                            'marza_posr_tech'], trendline="ols")
     st.write(fig_marza)
 #################
-st.write(df)
+# st.write(df)
+st.write(df_filtered)
 
 
-cl3, cl4 = st.columns(2)
-# Represent only large countries
-with cl3:
-    st.dataframe(df_towar.style.format(thousands=" ", precision=0))
+# cl3, cl4 = st.columns(2)
+# # Represent only large countries
+# with cl3:
+#     st.dataframe(df_towar.style.format(thousands=" ", precision=0))
 
-with cl4:
-    df_towar_chart = df_towar.query('wartosc_pln > 30000')
-    st.dataframe(df_towar_chart.style.format(thousands=" ", precision=0))
-    fig = px.pie(df_towar_chart, values='wartosc_pln', names='klucz_towaru_wz',
-                 title='Population of European continent')
-    st.write(fig)
+# with cl4:
+#     df_towar_chart = df_towar.query('wartosc_pln > 30000')
+#     st.dataframe(df_towar_chart.style.format(thousands=" ", precision=0))
+#     fig = px.pie(df_towar_chart, values='wartosc_pln', names='klucz_towaru_wz',
+#                  title='Population of European continent')
+#     st.write(fig)
