@@ -29,13 +29,12 @@ fl = st.file_uploader(":file_folder: Upload a file",
 
 @st.cache_data
 def load_data():
-    if fl is not None:
-        filename = fl.name
-        st.write(filename)
-        df = pd.read_excel(fl, sheet_name="Arkusz1")
-    else:
-        # os.chdir(r"C:\Users\AEPAC\Desktop\Streamlit")
-        # df = pd.read_csv("Superstore.csv", encoding="ISO-8859-1")
+    filename = fl.name
+    st.write(filename)
+    df = pd.read_excel(fl, sheet_name="Arkusz1")
+    # os.chdir(r"C:\Users\AEPAC\Desktop\Streamlit")
+    # df = pd.read_csv("Superstore.csv", encoding="ISO-8859-1")
+    if df.empty:
         st.write(" ### Załaduj dane")
     return df
 
@@ -81,15 +80,19 @@ df_filtered = df.loc[(df["data_wystawienia_wz"] >= date_min)
 
 
 # df z towarem i wartością sprzedaży w wybranym przedziale czasu
-df_towar = df_filtered.groupby('klucz_towaru_wz')[
-    'wartosc_pln'].sum().reset_index()
+df_towar = df_filtered.groupby('klucz_towaru_wz').agg(
+    wartosc_pln=('wartosc_pln', 'sum'),
+    zysk=('przychod_posr_tech', 'sum')
+).reset_index()
+
+
 # Sortowanie nowego DataFrame po sumie wartości sprzedaży:
 df_towar = df_towar.sort_values(
     by='wartosc_pln', ascending=False).reset_index(drop=True)
 # Zaokrąglenie sumy wartości sprzedaży do pełnych tysięcy:
 df_towar['wartosc_pln'] = df_towar['wartosc_pln'].apply(
     lambda x: round(x, 0))
-df_towar['suma_wartosc'] = df_towar["wartosc_pln"].sum()
+# df_towar['suma_wartosc'] = df_towar["wartosc_pln"].sum()
 
 ##########################################
 gd = GridOptionsBuilder.from_dataframe(df_towar)
@@ -97,7 +100,30 @@ gd = GridOptionsBuilder.from_dataframe(df_towar)
 # gd.configure_default_column(editable=True, groupable=True)
 gd.configure_selection(selection_mode='single', use_checkbox=True)
 gridoptions = gd.build()
-st.header("This is Agrid table")
+
+########################################
+# podsumowanie wybranego okresu:
+
+st.divider()
+st.header("Podsumowanie:")
+sprzedaz_total = df_filtered['wartosc_pln'].sum()
+formated_sprzedaz_total = "{:,.0f}".format(sprzedaz_total).replace(",", " ")
+zysk_total = df_filtered['przychod_posr_tech'].sum()
+formated_zysk_total = "{:,.0f}".format(zysk_total).replace(",", " ")
+marza = zysk_total/sprzedaz_total
+formated_marza_total = "{:.0%}".format(marza)
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.write(f"## Sprzedaż: {formated_sprzedaz_total} PLN")
+with col2:
+    st.write(f"## Zysk: {formated_zysk_total} PLN")
+with col3:
+    st.write(
+        f"## Marża: {formated_marza_total}")
+st.divider()
+########################################
+st.header("Towary:")
 
 grid_table = AgGrid(df_towar, gridOptions=gridoptions,
                     update_mode=GridUpdateMode.SELECTION_CHANGED,
@@ -110,9 +136,27 @@ sel_row = grid_table["selected_rows"]
 # st.write(sel_row)
 # st.write(type(sel_row))
 towar = sel_row[0]["klucz_towaru_wz"]
+
+
 ##########################################
+st.divider()
+# wyswietlanie statystyk wybranego towaru
+zysk = sel_row[0]["zysk"]
+formated_zysk = "{:,.0f}".format(zysk).replace(",", " ")
+sprzedaz = sel_row[0]["wartosc_pln"]
+formated_sprzedaz = "{:,.0f}".format(sprzedaz).replace(",", " ")
+marza = zysk/sprzedaz
+formated_marza = "{:.0%}".format(marza)
 
-
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.write("## Wybrany towar: "+str(towar))
+with col2:
+    st.write(f"## Zysk: {formated_zysk} PLN")
+with col3:
+    st.write(
+        f"## Sprzedaż: {formated_sprzedaz} PLN, \n ## Marża: {formated_marza}")
+st.divider()
 #######################################
 
 # wyswietlanie wyników
@@ -139,7 +183,7 @@ with cl1:
     # st.write(df_koszt_koop)
 
     # wszystko na jednym
-    df_koszty_all = df[df['klucz_towaru_wz'] == towar]
+    df_koszty_all = df_filtered[df_filtered['klucz_towaru_wz'] == towar]
     df_koszty_all = df_koszty_all[['data_wystawienia_wz',
                                    'jednostkowy_koszt_koop', 'jednostkowy_koszt_zakup', 'jednostkowy_koszt_mterialu', 'jednostkowy_koszt_operacji_posr_tech']]
     # Tworzenie wykresu scatter
@@ -158,7 +202,7 @@ with cl1:
 
 with cl2:
 
-    df_koszty_wsp = df[df['klucz_towaru_wz'] == towar]
+    df_koszty_wsp = df_filtered[df_filtered['klucz_towaru_wz'] == towar]
     fig_marza = px.scatter(df_koszty_wsp, x='data_wystawienia_wz', y=[
                            'marza_posr_tech'], trendline="ols")
     st.write(fig_marza)
